@@ -552,7 +552,7 @@ if ( ! function_exists('crear_movie') ) {
          'label' => __( 'Peliculas', 'movie' ),
          'description' => __( 'Peliculas', 'movie' ),
          'labels' => $labels,
-         'supports' => array( 'title', 'editor', 'revisions', 'custom-fields', 'Actores','Actrices','Año','Categoria de Pelicula'),
+         'supports' => array( 'title', 'editor', 'excerpt', 'author', 'thumbnail', 'comments', 'revisions', 'custom-fields', 'Director', 'MovieCategory', ),
          'taxonomies' => array( 'pelicula' ),
          'hierarchical' => false,
          'public' => true,
@@ -579,67 +579,6 @@ if ( ! function_exists('crear_movie') ) {
 /*
 * Creating a function to create our CPT
 */
-
-function custom_post_type() {
-
-// Set UI labels for Custom Post Type
-	$labels = array(
-		'name'                => _x( 'Movies', 'Post Type General Name', 'twentythirteen' ),
-		'singular_name'       => _x( 'Movie', 'Post Type Singular Name', 'twentythirteen' ),
-		'menu_name'           => __( 'Movies', 'twentythirteen' ),
-		'parent_item_colon'   => __( 'Parent Movie', 'twentythirteen' ),
-		'all_items'           => __( 'All Movies', 'twentythirteen' ),
-		'view_item'           => __( 'View Movie', 'twentythirteen' ),
-		'add_new_item'        => __( 'Add New Movie', 'twentythirteen' ),
-		'add_new'             => __( 'Add New', 'twentythirteen' ),
-		'edit_item'           => __( 'Edit Movie', 'twentythirteen' ),
-		'update_item'         => __( 'Update Movie', 'twentythirteen' ),
-		'search_items'        => __( 'Search Movie', 'twentythirteen' ),
-		'not_found'           => __( 'Not Found', 'twentythirteen' ),
-		'not_found_in_trash'  => __( 'Not found in Trash', 'twentythirteen' ),
-	);
-	
-// Set other options for Custom Post Type
-	
-	$args = array(
-		'label'               => __( 'movies', 'twentythirteen' ),
-		'description'         => __( 'Movie news and reviews', 'twentythirteen' ),
-		'labels'              => $labels,
-		// Features this CPT supports in Post Editor
-		'supports'            => array( 'title', 'editor', 'excerpt', 'author', 'thumbnail', 'comments', 'revisions', 'custom-fields', 'Director', 'MovieCategory', ),
-		// You can associate this CPT with a taxonomy or custom taxonomy. 
-		'taxonomies'          => array( 'genres' ),
-		/* A hierarchical CPT is like Pages and can have
-		* Parent and child items. A non-hierarchical CPT
-		* is like Posts.
-		*/	
-		'hierarchical'        => false,
-		'public'              => true,
-		'show_ui'             => true,
-		'show_in_menu'        => true,
-		'show_in_nav_menus'   => true,
-		'show_in_admin_bar'   => true,
-		'menu_position'       => 5,
-		'can_export'          => true,
-		'has_archive'         => true,
-		'exclude_from_search' => false,
-		'publicly_queryable'  => true,
-		'capability_type'     => 'page',
-	);
-	
-	// Registering your Custom Post Type
-	register_post_type( 'movies', $args );
-
-}
-
-/* Hook into the 'init' action so that the function
-* Containing our post type registration is not 
-* unnecessarily executed. 
-*/
-
-add_action( 'init', 'custom_post_type', 0 );
-
-
 
 
 	/**
@@ -727,20 +666,354 @@ function add_my_post_types_to_query( $query ) {
 
 
 
-// Añadir campos adicionales "autor original"
-función  lzgl_add_custom_field_original_author ()
-{
-    add_meta_box ( 'original_author' , 'autor original' , 'lzgl_custom_field_original_author_html_callback' , 'Novela' , "avanzado" , "Alto" );
+
+
+
+
+function actores_actrices_get_meta( $value ) {
+	global $post;
+
+	$field = get_post_meta( $post->ID, $value, true );
+	if ( ! empty( $field ) ) {
+		return is_array( $field ) ? stripslashes_deep( $field ) : stripslashes( wp_kses_decode_entities( $field ) );
+	} else {
+		return false;
+	}
 }
-función  lzgl_custom_field_original_author_html_callback ($ POST)
-{
-    wp_nonce_field ( 'original_author' , 'original_author_nonce' );
-    El valor (ID $ post->, get_post_meta = $ '_original_author' , true );
-    echo '<label for = "original_author"> autor original </ label>' ;
-    echo '<la entrada del type = "text" el mencionado anteriormente Identificación = "original_author_input" name = "original_author" El valor = "' .. El valor de $ '" size = "25" />' ;
+
+function actores_actrices_add_meta_box() {
+	add_meta_box(
+		'actores_actrices-actores-actrices',
+		__( 'Actores/actrices', 'actores_actrices' ),
+		'actores_actrices_html',
+		'post',
+		'normal',
+		'high'
+	);
+	add_meta_box(
+		'actores_actrices-actores-actrices',
+		__( 'Actores/actrices', 'actores_actrices' ),
+		'actores_actrices_html',
+		'pelicula',
+		'normal',
+		'high'
+	);
 }
-add_action ( 'add_meta_boxes' , 'lzgl_add_custom_field_original_author' );
+add_action( 'add_meta_boxes', 'actores_actrices_add_meta_box' );
+
+function actores_actrices_html( $post) {
+	wp_nonce_field( '_actores_actrices_nonce', 'actores_actrices_nonce' ); ?>
+
+	<p>
+		<label for="actores_actrices_actores"><?php _e( 'Actores', 'actores_actrices' ); ?></label><br>
+		<textarea name="actores_actrices_actores" id="actores_actrices_actores" ><?php echo actores_actrices_get_meta( 'actores_actrices_actores' ); ?></textarea>
+	
+	</p><?php
+}
+
+function actores_actrices_save( $post_id ) {
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+	if ( ! isset( $_POST['actores_actrices_nonce'] ) || ! wp_verify_nonce( $_POST['actores_actrices_nonce'], '_actores_actrices_nonce' ) ) return;
+	if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+	if ( isset( $_POST['actores_actrices_actores'] ) )
+		update_post_meta( $post_id, 'actores_actrices_actores', esc_attr( $_POST['actores_actrices_actores'] ) );
+}
+add_action( 'save_post', 'actores_actrices_save' );
+
+/*
+	Usage: actores_actrices_get_meta( 'actores_actrices_actores' )
+*/
 
 
 
+function director_get_meta( $value ) {
+	global $post;
+
+	$field = get_post_meta( $post->ID, $value, true );
+	if ( ! empty( $field ) ) {
+		return is_array( $field ) ? stripslashes_deep( $field ) : stripslashes( wp_kses_decode_entities( $field ) );
+	} else {
+		return false;
+	}
+}
+
+function director_add_meta_box() {
+	add_meta_box(
+		'director-director',
+		__( 'Director', 'director' ),
+		'director_html',
+		'post',
+		'normal',
+		'high'
+	);
+	add_meta_box(
+		'director-director',
+		__( 'Director', 'director' ),
+		'director_html',
+		'pelicula',
+		'normal',
+		'high'
+	);
+}
+add_action( 'add_meta_boxes', 'director_add_meta_box' );
+
+function director_html( $post) {
+	wp_nonce_field( '_director_nonce', 'director_nonce' ); ?>
+
+	<p>
+		<label for="director_director"><?php _e( 'Director', 'director' ); ?></label><br>
+		<textarea name="director_director" id="director_director" ><?php echo director_get_meta( 'director_director' ); ?></textarea>
+	
+	</p><?php
+}
+
+function director_save( $post_id ) {
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+	if ( ! isset( $_POST['director_nonce'] ) || ! wp_verify_nonce( $_POST['director_nonce'], '_director_nonce' ) ) return;
+	if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+	if ( isset( $_POST['director_director'] ) )
+		update_post_meta( $post_id, 'director_director', esc_attr( $_POST['director_director'] ) );
+}
+add_action( 'save_post', 'director_save' );
+
+/*
+	Usage: director_get_meta( 'director_director' )
+*/
+
+
+function ao_get_meta( $value ) {
+	global $post;
+
+	$field = get_post_meta( $post->ID, $value, true );
+	if ( ! empty( $field ) ) {
+		return is_array( $field ) ? stripslashes_deep( $field ) : stripslashes( wp_kses_decode_entities( $field ) );
+	} else {
+		return false;
+	}
+}
+
+function ao_add_meta_box() {
+	add_meta_box(
+		'ao-ao',
+		__( 'Año', 'ao' ),
+		'ao_html',
+		'post',
+		'normal',
+		'high'
+	);
+	add_meta_box(
+		'ao-ao',
+		__( 'Año', 'ao' ),
+		'ao_html',
+		'pelicula',
+		'normal',
+		'high'
+	);
+}
+add_action( 'add_meta_boxes', 'ao_add_meta_box' );
+
+function ao_html( $post) {
+	wp_nonce_field( '_ao_nonce', 'ao_nonce' ); ?>
+
+	<p>
+		<label for="ao_ao"><?php _e( 'Año', 'ao' ); ?></label><br>
+		<select name="ao_ao" id="ao_ao">
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1900' ) ? 'selected' : '' ?>>1900</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1901' ) ? 'selected' : '' ?>>1901</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1902' ) ? 'selected' : '' ?>>1902</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1903' ) ? 'selected' : '' ?>>1903</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1904' ) ? 'selected' : '' ?>>1904</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1905' ) ? 'selected' : '' ?>>1905</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1906' ) ? 'selected' : '' ?>>1906</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1907' ) ? 'selected' : '' ?>>1907</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1908' ) ? 'selected' : '' ?>>1908</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1909' ) ? 'selected' : '' ?>>1909</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1910' ) ? 'selected' : '' ?>>1910</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1911' ) ? 'selected' : '' ?>>1911</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1912' ) ? 'selected' : '' ?>>1912</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1913' ) ? 'selected' : '' ?>>1913</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1914' ) ? 'selected' : '' ?>>1914</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1915' ) ? 'selected' : '' ?>>1915</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1916' ) ? 'selected' : '' ?>>1916</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1917' ) ? 'selected' : '' ?>>1917</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1918' ) ? 'selected' : '' ?>>1918</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1919' ) ? 'selected' : '' ?>>1919</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1920' ) ? 'selected' : '' ?>>1920</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1921' ) ? 'selected' : '' ?>>1921</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1922' ) ? 'selected' : '' ?>>1922</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1923' ) ? 'selected' : '' ?>>1923</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1924' ) ? 'selected' : '' ?>>1924</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1925' ) ? 'selected' : '' ?>>1925</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1926' ) ? 'selected' : '' ?>>1926</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1927' ) ? 'selected' : '' ?>>1927</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1928' ) ? 'selected' : '' ?>>1928</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1929' ) ? 'selected' : '' ?>>1929</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1930' ) ? 'selected' : '' ?>>1930</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1931' ) ? 'selected' : '' ?>>1931</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1932' ) ? 'selected' : '' ?>>1932</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1933' ) ? 'selected' : '' ?>>1933</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1934' ) ? 'selected' : '' ?>>1934</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1935' ) ? 'selected' : '' ?>>1935</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1936' ) ? 'selected' : '' ?>>1936</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1937' ) ? 'selected' : '' ?>>1937</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1938' ) ? 'selected' : '' ?>>1938</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1939' ) ? 'selected' : '' ?>>1939</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1940' ) ? 'selected' : '' ?>>1940</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1941' ) ? 'selected' : '' ?>>1941</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1942' ) ? 'selected' : '' ?>>1942</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1943' ) ? 'selected' : '' ?>>1943</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1944' ) ? 'selected' : '' ?>>1944</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1945' ) ? 'selected' : '' ?>>1945</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1946' ) ? 'selected' : '' ?>>1946</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1947' ) ? 'selected' : '' ?>>1947</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1948' ) ? 'selected' : '' ?>>1948</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1949' ) ? 'selected' : '' ?>>1949</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1950' ) ? 'selected' : '' ?>>1950</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1951' ) ? 'selected' : '' ?>>1951</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1952' ) ? 'selected' : '' ?>>1952</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1953' ) ? 'selected' : '' ?>>1953</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1954' ) ? 'selected' : '' ?>>1954</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1955' ) ? 'selected' : '' ?>>1955</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1956' ) ? 'selected' : '' ?>>1956</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1957' ) ? 'selected' : '' ?>>1957</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1958' ) ? 'selected' : '' ?>>1958</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1959' ) ? 'selected' : '' ?>>1959</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1960' ) ? 'selected' : '' ?>>1960</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1961' ) ? 'selected' : '' ?>>1961</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1962' ) ? 'selected' : '' ?>>1962</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1963' ) ? 'selected' : '' ?>>1963</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1964' ) ? 'selected' : '' ?>>1964</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1965' ) ? 'selected' : '' ?>>1965</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1966' ) ? 'selected' : '' ?>>1966</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1967' ) ? 'selected' : '' ?>>1967</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1968' ) ? 'selected' : '' ?>>1968</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1969' ) ? 'selected' : '' ?>>1969</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1970' ) ? 'selected' : '' ?>>1970</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1971' ) ? 'selected' : '' ?>>1971</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1972' ) ? 'selected' : '' ?>>1972</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1973' ) ? 'selected' : '' ?>>1973</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1974' ) ? 'selected' : '' ?>>1974</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1975' ) ? 'selected' : '' ?>>1975</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1976' ) ? 'selected' : '' ?>>1976</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1977' ) ? 'selected' : '' ?>>1977</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1978' ) ? 'selected' : '' ?>>1978</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1979' ) ? 'selected' : '' ?>>1979</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1980' ) ? 'selected' : '' ?>>1980</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1981' ) ? 'selected' : '' ?>>1981</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1982' ) ? 'selected' : '' ?>>1982</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1983' ) ? 'selected' : '' ?>>1983</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1984' ) ? 'selected' : '' ?>>1984</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1985' ) ? 'selected' : '' ?>>1985</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1986' ) ? 'selected' : '' ?>>1986</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1987' ) ? 'selected' : '' ?>>1987</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1988' ) ? 'selected' : '' ?>>1988</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1989' ) ? 'selected' : '' ?>>1989</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1990' ) ? 'selected' : '' ?>>1990</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1991' ) ? 'selected' : '' ?>>1991</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1992' ) ? 'selected' : '' ?>>1992</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1993' ) ? 'selected' : '' ?>>1993</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1994' ) ? 'selected' : '' ?>>1994</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1995' ) ? 'selected' : '' ?>>1995</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1996' ) ? 'selected' : '' ?>>1996</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1997' ) ? 'selected' : '' ?>>1997</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1998' ) ? 'selected' : '' ?>>1998</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '1999' ) ? 'selected' : '' ?>>1999</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2000' ) ? 'selected' : '' ?>>2000</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2001' ) ? 'selected' : '' ?>>2001</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2002' ) ? 'selected' : '' ?>>2002</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2003' ) ? 'selected' : '' ?>>2003</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2004' ) ? 'selected' : '' ?>>2004</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2005' ) ? 'selected' : '' ?>>2005</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2006' ) ? 'selected' : '' ?>>2006</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2007' ) ? 'selected' : '' ?>>2007</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2008' ) ? 'selected' : '' ?>>2008</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2009' ) ? 'selected' : '' ?>>2009</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2010' ) ? 'selected' : '' ?>>2010</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2011' ) ? 'selected' : '' ?>>2011</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2012' ) ? 'selected' : '' ?>>2012</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2013' ) ? 'selected' : '' ?>>2013</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2014' ) ? 'selected' : '' ?>>2014</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2015' ) ? 'selected' : '' ?>>2015</option>
+			<option <?php echo (ao_get_meta( 'ao_ao' ) === '2016' ) ? 'selected' : '' ?>>2016</option>
+		</select>
+	</p><?php
+}
+
+function ao_save( $post_id ) {
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+	if ( ! isset( $_POST['ao_nonce'] ) || ! wp_verify_nonce( $_POST['ao_nonce'], '_ao_nonce' ) ) return;
+	if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+	if ( isset( $_POST['ao_ao'] ) )
+		update_post_meta( $post_id, 'ao_ao', esc_attr( $_POST['ao_ao'] ) );
+}
+add_action( 'save_post', 'ao_save' );
+
+/*
+	Usage: ao_get_meta( 'ao_ao' )
+*/
+
+
+
+/**
+ * Generated by the WordPress Meta Box generator
+ * at http://jeremyhixon.com/tool/wordpress-meta-box-generator/
+ */
+
+function categora_de_pelcula_get_meta( $value ) {
+	global $post;
+
+	$field = get_post_meta( $post->ID, $value, true );
+	if ( ! empty( $field ) ) {
+		return is_array( $field ) ? stripslashes_deep( $field ) : stripslashes( wp_kses_decode_entities( $field ) );
+	} else {
+		return false;
+	}
+}
+
+function categora_de_pelcula_add_meta_box() {
+	add_meta_box(
+		'categora_de_pelcula-categora-de-pelcula',
+		__( 'Categoría de película', 'categora_de_pelcula' ),
+		'categora_de_pelcula_html',
+		'post',
+		'normal',
+		'high'
+	);
+	add_meta_box(
+		'categora_de_pelcula-categora-de-pelcula',
+		__( 'Categoría de película', 'categora_de_pelcula' ),
+		'categora_de_pelcula_html',
+		'pelicula',
+		'normal',
+		'high'
+	);
+}
+add_action( 'add_meta_boxes', 'categora_de_pelcula_add_meta_box' );
+
+function categora_de_pelcula_html( $post) {
+	wp_nonce_field( '_categora_de_pelcula_nonce', 'categora_de_pelcula_nonce' ); ?>
+
+	<p>
+		<label for="categora_de_pelcula_categora"><?php _e( 'Categoría', 'categora_de_pelcula' ); ?></label><br>
+		<textarea name="categora_de_pelcula_categora" id="categora_de_pelcula_categora" ><?php echo categora_de_pelcula_get_meta( 'categora_de_pelcula_categora' ); ?></textarea>
+	
+	</p><?php
+}
+
+function categora_de_pelcula_save( $post_id ) {
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+	if ( ! isset( $_POST['categora_de_pelcula_nonce'] ) || ! wp_verify_nonce( $_POST['categora_de_pelcula_nonce'], '_categora_de_pelcula_nonce' ) ) return;
+	if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+	if ( isset( $_POST['categora_de_pelcula_categora'] ) )
+		update_post_meta( $post_id, 'categora_de_pelcula_categora', esc_attr( $_POST['categora_de_pelcula_categora'] ) );
+}
+add_action( 'save_post', 'categora_de_pelcula_save' );
+
+/*
+	Usage: categora_de_pelcula_get_meta( 'categora_de_pelcula_categora' )
+*/
 
